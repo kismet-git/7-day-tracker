@@ -157,8 +157,12 @@ export function HabitBuilderApp() {
   }
 
   const goToDay = (day: number) => {
-    setCurrentDay(day)
-    setCurrentScreen("day")
+    // Progressive unlock logic - only allow access to completed days + next day
+    const canAccess = day === 1 || daysData[day - 2]?.completed
+    if (canAccess) {
+      setCurrentDay(day)
+      setCurrentScreen("day")
+    }
   }
 
   const completeDay = (dayNumber: number, userPrompt: string, userResponse: string) => {
@@ -189,7 +193,7 @@ export function HabitBuilderApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-white">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto">
         <ProgressBar current={completedDays} total={7} percentage={progressPercentage} />
         <Navigation currentDay={currentDay} daysData={daysData} onDaySelect={goToDay} onReset={resetProgress} />
@@ -198,6 +202,7 @@ export function HabitBuilderApp() {
           onComplete={completeDay}
           onNext={() => currentDay < 7 && setCurrentDay(currentDay + 1)}
           onPrev={() => currentDay > 1 && setCurrentDay(currentDay - 1)}
+          daysData={daysData}
         />
       </div>
     </div>
