@@ -124,29 +124,48 @@ export function HabitBuilderApp() {
   const [currentScreen, setCurrentScreen] = useState<"welcome" | "day" | "completion">("welcome")
   const [currentDay, setCurrentDay] = useState(1)
   const [daysData, setDaysData] = useState<DayData[]>(initialDaysData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Load saved progress from localStorage
   useEffect(() => {
-    const savedData = localStorage.getItem("chatgpt-habit-builder")
-    if (savedData) {
-      const parsed = JSON.parse(savedData)
-      setDaysData(parsed.daysData || initialDaysData)
-      setCurrentDay(parsed.currentDay || 1)
-      setCurrentScreen(parsed.currentScreen || "welcome")
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const savedData = localStorage.getItem("chatgpt-habit-builder")
+        if (savedData) {
+          const parsed = JSON.parse(savedData)
+          setDaysData(parsed.daysData || initialDaysData)
+          setCurrentDay(parsed.currentDay || 1)
+          setCurrentScreen(parsed.currentScreen || "welcome")
+        }
+      } catch (e: any) {
+        setError(e.message || "Failed to load data")
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    loadData()
   }, [])
 
   // Save progress to localStorage
   useEffect(() => {
-    localStorage.setItem(
-      "chatgpt-habit-builder",
-      JSON.stringify({
-        daysData,
-        currentDay,
-        currentScreen,
-      }),
-    )
-  }, [daysData, currentDay, currentScreen])
+    if (!isLoading) {
+      try {
+        localStorage.setItem(
+          "chatgpt-habit-builder",
+          JSON.stringify({
+            daysData,
+            currentDay,
+            currentScreen,
+          }),
+        )
+      } catch (e: any) {
+        setError(e.message || "Failed to save data")
+      }
+    }
+  }, [daysData, currentDay, currentScreen, isLoading])
 
   const completedDays = daysData.filter((day) => day.completed).length
   const progressPercentage = (completedDays / 7) * 100
@@ -182,6 +201,14 @@ export function HabitBuilderApp() {
     setCurrentDay(1)
     setCurrentScreen("welcome")
     localStorage.removeItem("chatgpt-habit-builder")
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
   }
 
   if (currentScreen === "welcome") {

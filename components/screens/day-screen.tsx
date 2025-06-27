@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Copy, ChevronLeft, ChevronRight, CheckCircle, Lock } from "lucide-react"
+import { Copy, ChevronLeft, ChevronRight, CheckCircle, Lock, AlertCircle } from "lucide-react"
 import type { DayData } from "@/components/habit-builder-app"
 
 interface DayScreenProps {
@@ -20,13 +20,15 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
   const [userResponse, setUserResponse] = useState("")
   const [showFollowUps, setShowFollowUps] = useState(false)
   const [showError, setShowError] = useState(false)
+  const [copySuccess, setCopySuccess] = useState(false)
 
-  // Sync local state with dayData when day changes
+  // Sync local state with dayData when day changes - CRITICAL for input field independence
   useEffect(() => {
     setUserPrompt(dayData.userPrompt || "")
     setUserResponse(dayData.userResponse || "")
     setShowError(false)
-  }, [dayData.day, dayData.userPrompt, dayData.userResponse])
+    setShowFollowUps(false) // Reset follow-ups when changing days
+  }, [dayData.day]) // Only depend on day number to ensure clean reset
 
   const followUpTips = {
     1: [
@@ -68,11 +70,18 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
 
   const currentFollowUps = followUpTips[dayData.day as keyof typeof followUpTips] || []
 
-  const copyTemplate = () => {
-    navigator.clipboard.writeText(dayData.template)
+  const copyTemplate = async () => {
+    try {
+      await navigator.clipboard.writeText(dayData.template)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy template:", err)
+    }
   }
 
-  const isFormValid = userPrompt.trim() !== "" && userResponse.trim() !== ""
+  // Enhanced validation - both fields must have meaningful content
+  const isFormValid = userPrompt.trim().length > 10 && userResponse.trim().length > 10
 
   const handleComplete = () => {
     if (!isFormValid) {
@@ -80,120 +89,147 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
       return
     }
     setShowError(false)
-    onComplete(dayData.day, userPrompt, userResponse)
+    onComplete(dayData.day, userPrompt.trim(), userResponse.trim())
   }
 
-  // Check if next day is unlocked
+  // Progressive unlock logic
   const isNextDayUnlocked = dayData.day === 7 || daysData[dayData.day]?.completed || dayData.completed
 
   return (
-    <div className="p-4 pb-20">
+    <div className="p-4 pb-20 bg-gradient-to-br from-gray-50 to-white min-h-screen">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">{dayData.icon}</div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Day {dayData.day}</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">Day {dayData.day}</h1>
           {dayData.completed && (
-            <div className="flex items-center justify-center gap-2" style={{ color: "#000099" }}>
-              <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">Completed</span>
+            <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-xl border border-green-200 shadow-sm inline-flex">
+              <CheckCircle className="w-5 h-5" style={{ color: "#000099" }} />
+              <span className="font-bold" style={{ color: "#000099" }}>
+                Completed
+              </span>
             </div>
           )}
         </div>
 
         {/* Task Card */}
-        <Card className="mb-6 shadow-lg rounded-xl">
+        <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
             <div
-              className="border-l-4 p-4 mb-4 rounded-r-lg shadow-sm"
+              className="border-l-4 p-4 mb-4 rounded-r-xl shadow-sm"
               style={{ borderLeftColor: "#000099", backgroundColor: "#f8f9ff" }}
             >
-              <h3 className="font-semibold text-gray-900 mb-2">Today's Task:</h3>
-              <p className="text-lg text-gray-800 font-medium">{dayData.task}</p>
+              <h3 className="font-bold text-gray-900 mb-2">Today's Task:</h3>
+              <p className="text-lg text-gray-800 font-semibold leading-relaxed">{dayData.task}</p>
             </div>
-            <p className="text-gray-700 mb-4">{dayData.context}</p>
+            <p className="text-gray-700 leading-relaxed">{dayData.context}</p>
           </CardContent>
         </Card>
 
         {/* Template Card */}
-        <Card className="mb-6 shadow-lg rounded-xl">
+        <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">📝 Copy & Fill This Template:</h3>
-              <Button variant="outline" size="sm" onClick={copyTemplate} className="rounded-full bg-transparent">
+              <h3 className="font-bold text-gray-900">📝 Copy & Fill This Template:</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyTemplate}
+                className="rounded-full bg-transparent font-semibold transition-all duration-200 hover:shadow-md"
+                style={{
+                  borderColor: "#000099",
+                  color: copySuccess ? "#22c55e" : "#000099",
+                }}
+              >
                 <Copy className="w-4 h-4 mr-2" />
-                Copy
+                {copySuccess ? "Copied!" : "Copy"}
               </Button>
             </div>
 
-            <div className="bg-gray-50 border rounded-lg p-4 mb-4 shadow-sm">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">{dayData.template}</pre>
+            <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 mb-4 shadow-inner">
+              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                {dayData.template}
+              </pre>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Example:</h4>
-              <pre className="text-sm text-gray-600 whitespace-pre-wrap font-mono">{dayData.templateExample}</pre>
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+              <h4 className="font-bold text-gray-900 mb-2 text-sm">Example:</h4>
+              <pre className="text-sm text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
+                {dayData.templateExample}
+              </pre>
             </div>
           </CardContent>
         </Card>
 
-        {/* Required Fields Notice */}
-        <Card className="mb-6 shadow-lg rounded-xl">
+        {/* Required Fields Card */}
+        <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-gray-700">
-                <strong>Note:</strong> You must complete both sections below before continuing to the next day.
-                <span className="text-red-600 ml-2">* Required</span>
-              </p>
+            {/* Enhanced instructional message */}
+            <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-red-900 mb-1">Complete Both Sections to Continue</p>
+                  <p className="text-red-800 text-sm leading-relaxed">
+                    You must fill in both your custom prompt and ChatGPT's response to unlock the next day. Each field
+                    requires at least 10 characters of meaningful content.
+                  </p>
+                  <p className="text-red-600 font-semibold mt-1 text-sm">* Both fields are required</p>
+                </div>
+              </div>
             </div>
 
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Your Custom Prompt: <span className="text-red-600">*</span>
+            <h3 className="font-bold text-gray-900 mb-3">
+              Your Custom Prompt: <span style={{ color: "#ff3333" }}>*</span>
             </h3>
             <Textarea
-              placeholder="Paste your customized prompt here..."
+              placeholder="Paste your customized prompt here... (minimum 10 characters)"
               value={userPrompt}
               onChange={(e) => {
                 setUserPrompt(e.target.value)
                 setShowError(false)
               }}
-              className="mb-4 min-h-[100px] rounded-lg"
+              className="mb-4 min-h-[100px] rounded-xl border-2 focus:border-blue-400 transition-colors"
             />
 
-            <h3 className="font-semibold text-gray-900 mb-4">
-              ChatGPT's Response & Your Notes: <span className="text-red-600">*</span>
+            <h3 className="font-bold text-gray-900 mb-3">
+              ChatGPT's Response & Your Notes: <span style={{ color: "#ff3333" }}>*</span>
             </h3>
             <Textarea
-              placeholder="Paste ChatGPT's response and add your thoughts, key takeaways, or how you'll use this..."
+              placeholder="Paste ChatGPT's response and add your thoughts, key takeaways, or how you'll use this... (minimum 10 characters)"
               value={userResponse}
               onChange={(e) => {
                 setUserResponse(e.target.value)
                 setShowError(false)
               }}
-              className="min-h-[150px] rounded-lg"
+              className="min-h-[150px] rounded-xl border-2 focus:border-blue-400 transition-colors"
             />
 
             {showError && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm" style={{ color: "#ff3333" }}>
-                  Please complete both sections before proceeding.
-                </p>
+              <div className="mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" style={{ color: "#ff3333" }} />
+                  <p className="font-semibold text-sm" style={{ color: "#ff3333" }}>
+                    Please complete both sections with meaningful content (at least 10 characters each) before
+                    proceeding.
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Follow-up Tips */}
-        <Card className="mb-6 shadow-lg rounded-xl">
+        <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
             <Button
               variant="outline"
               onClick={() => setShowFollowUps(!showFollowUps)}
-              className="w-full mb-4 font-semibold transition-all duration-200"
+              className="w-full mb-4 font-bold py-3 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
               style={{
                 backgroundColor: showFollowUps ? "#000" : "#ffff33",
                 color: showFollowUps ? "#fff" : "#000",
-                borderRadius: "999px",
+                borderRadius: "16px",
                 border: "none",
               }}
               onMouseEnter={(e) => {
@@ -213,15 +249,15 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             </Button>
 
             {showFollowUps && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-3">Don't Stop There - Try These Follow-ups:</h4>
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+                <h4 className="font-bold text-gray-900 mb-3">Don't Stop There - Try These Follow-ups:</h4>
                 <ul className="space-y-2">
                   {currentFollowUps.map((tip, index) => (
                     <li key={index} className="flex items-start text-sm text-gray-700">
-                      <span style={{ color: "#000099" }} className="mr-2">
+                      <span style={{ color: "#000099" }} className="mr-2 font-bold">
                         •
                       </span>
-                      <span>{tip}</span>
+                      <span className="leading-relaxed">{tip}</span>
                     </li>
                   ))}
                 </ul>
@@ -231,12 +267,16 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-4">
           <Button
             variant="outline"
             onClick={onPrev}
             disabled={dayData.day === 1}
-            className="rounded-full bg-transparent"
+            className="rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
+            style={{
+              borderColor: dayData.day === 1 ? "#ccc" : "#000099",
+              color: dayData.day === 1 ? "#999" : "#000099",
+            }}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
@@ -245,11 +285,11 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
           <Button
             onClick={handleComplete}
             disabled={!isFormValid}
-            className="font-semibold transition-all duration-200 shadow-lg"
+            className="font-bold py-3 px-6 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
             style={{
-              backgroundColor: isFormValid ? "#000" : "#ccc",
+              backgroundColor: isFormValid ? "#000099" : "#ccc",
               color: "#fff",
-              borderRadius: "999px",
+              borderRadius: "16px",
               border: "none",
             }}
             onMouseEnter={(e) => {
@@ -259,11 +299,11 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             }}
             onMouseLeave={(e) => {
               if (isFormValid) {
-                e.currentTarget.style.backgroundColor = "#000"
+                e.currentTarget.style.backgroundColor = "#000099"
               }
             }}
           >
-            {dayData.completed ? "Update" : "Complete Day"}
+            {dayData.completed ? "Update Day" : "Complete Day"}
             <CheckCircle className="w-4 h-4 ml-2" />
           </Button>
 
@@ -271,10 +311,17 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             variant="outline"
             onClick={onNext}
             disabled={dayData.day === 7 || !isNextDayUnlocked}
-            className="rounded-full bg-transparent"
+            className="rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
+            style={{
+              borderColor: dayData.day === 7 || !isNextDayUnlocked ? "#ccc" : "#000099",
+              color: dayData.day === 7 || !isNextDayUnlocked ? "#999" : "#000099",
+            }}
           >
             {dayData.day === 7 || !isNextDayUnlocked ? (
-              <Lock className="w-4 h-4 mr-2" />
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                Locked
+              </>
             ) : (
               <>
                 Next

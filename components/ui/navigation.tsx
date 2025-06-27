@@ -13,19 +13,19 @@ interface NavigationProps {
 
 export function Navigation({ currentDay, daysData, onDaySelect, onReset }: NavigationProps) {
   return (
-    <div className="sticky top-16 bg-white/90 backdrop-blur-sm border-b border-gray-200 p-4 z-10 shadow-sm">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">7-Day Challenge</h2>
+    <div className="sticky top-16 bg-white/95 backdrop-blur-md border-b border-gray-200 p-3 z-10 shadow-lg">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-black text-gray-900">7-Day Challenge</h2>
           <Button
             variant="outline"
             size="sm"
             onClick={onReset}
-            className="font-semibold transition-all duration-200 bg-transparent"
+            className="font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 bg-transparent text-sm"
             style={{
               backgroundColor: "#ff3333",
               color: "#fff",
-              borderRadius: "10px",
+              borderRadius: "12px",
               border: "none",
             }}
             onMouseEnter={(e) => {
@@ -37,7 +37,7 @@ export function Navigation({ currentDay, daysData, onDaySelect, onReset }: Navig
               e.currentTarget.style.color = "#fff"
             }}
           >
-            <RotateCcw className="w-4 h-4 mr-2" />
+            <RotateCcw className="w-3 h-3 mr-1" />
             Reset
           </Button>
         </div>
@@ -54,16 +54,20 @@ export function Navigation({ currentDay, daysData, onDaySelect, onReset }: Navig
                 size="sm"
                 onClick={() => onDaySelect(day.day)}
                 disabled={!isUnlocked}
-                className="flex-shrink-0 relative font-semibold transition-all duration-200 rounded-full"
+                className="flex-shrink-0 relative font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm"
                 style={{
                   backgroundColor: isCurrent ? "#000099" : isUnlocked ? "#fff" : "#f5f5f5",
                   color: isCurrent ? "#fff" : isUnlocked ? "#000099" : "#999",
                   borderColor: isUnlocked ? "#000099" : "#ccc",
+                  borderRadius: "12px",
+                  minWidth: "70px",
                 }}
               >
                 {!isUnlocked && <Lock className="w-3 h-3 mr-1" />}
                 Day {day.day}
-                {day.completed && <CheckCircle className="w-3 h-3 ml-1 text-green-500" />}
+                {day.completed && (
+                  <CheckCircle className="w-3 h-3 ml-1" style={{ color: isCurrent ? "#fff" : "#22c55e" }} />
+                )}
               </Button>
             )
           })}
