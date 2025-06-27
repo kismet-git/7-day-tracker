@@ -1,0 +1,83 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Trophy, RotateCcw, ExternalLink } from "lucide-react"
+import type { DayData } from "@/components/habit-builder-app"
+
+interface CompletionScreenProps {
+  onRestart: () => void
+  daysData: DayData[]
+}
+
+export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps) {
+  const completedDays = daysData.filter((day) => day.completed).length
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        {/* Celebration */}
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Congratulations!</h1>
+          <p className="text-xl text-gray-700 mb-6">
+            You've completed your 7-day ChatGPT habit builder. You're now ready to take your AI skills to the next
+            level.
+          </p>
+
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            <span className="text-lg font-semibold text-gray-900">{completedDays} of 7 days completed</span>
+          </div>
+        </div>
+
+        {/* Progress Summary */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Your Journey Summary</h2>
+            <div className="space-y-3">
+              {daysData.map((day) => (
+                <div key={day.day} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-2xl">{day.icon}</span>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">Day {day.day}</div>
+                    <div className="text-sm text-gray-600">{day.task}</div>
+                  </div>
+                  {day.completed && (
+                    <div className="text-green-500">
+                      <Trophy className="w-5 h-5" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CTA Section */}
+        <Card className="mb-6">
+          <CardContent className="p-6 text-center">
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Ready for More?</h3>
+            <p className="text-gray-600 mb-6">
+              Get access to our complete Prompt Pack with 1000+ proven prompts for every situation.
+            </p>
+
+            <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold py-3 mb-4">
+              <ExternalLink className="w-5 h-5 mr-2" />
+              Get the Full Prompt Pack
+            </Button>
+
+            <div className="text-sm text-gray-500 mb-4">Visit: prompts.aibeginnermode.com</div>
+
+            <Button variant="outline" onClick={onRestart} className="w-full bg-transparent">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Start Over
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-sm text-gray-500">Keep building your AI confidence, one prompt at a time.</div>
+      </div>
+    </div>
+  )
+}
