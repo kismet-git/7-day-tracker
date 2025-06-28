@@ -25,7 +25,7 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
             <br />
             Habit Builder
           </h1>
-          <p className="text-xl text-gray-600 mb-6 font-medium">No lessons. Just use it — and get better fast.</p>
+          <p className="text-xl text-gray-600 mb-6 font-medium">You don't need to learn AI — just start using it.</p>
 
           {completedDays > 0 && (
             <div className="flex items-center justify-center gap-2 mb-6 p-3 bg-green-50 rounded-xl border border-green-200 shadow-sm">
@@ -35,11 +35,9 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
           )}
         </div>
 
-        {/* Welcome Card */}
+        {/* Instructions Card */}
         <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome to Your AI Journey</h2>
-
             {/* Clear Instructions */}
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r-xl">
               <h3 className="font-bold text-blue-900 mb-2">How This Works:</h3>
