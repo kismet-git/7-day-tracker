@@ -121,13 +121,15 @@ export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4 overflow-x-hidden">
       <ConfettiAnimation />
       <div className="max-w-2xl w-full">
         {/* Celebration */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🎉</div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Congratulations!</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 break-words">
+            Congratulations!
+          </h1>
           <p className="text-lg text-gray-700 mb-6 leading-relaxed font-medium">
             You've completed your 7-day ChatGPT habit builder. You're now ready to take your AI skills to the next
             level.
@@ -147,16 +149,16 @@ export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps)
               {daysData.map((day) => (
                 <div
                   key={day.day}
-                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl shadow-sm border border-gray-200"
+                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl shadow-sm border border-gray-200 overflow-hidden"
                 >
-                  <span className="text-2xl">{day.icon}</span>
-                  <div className="flex-1">
-                    <div className="font-bold text-gray-900">Day {day.day}</div>
-                    <div className="text-sm text-gray-600 leading-relaxed">{day.task}</div>
+                  <span className="text-xl sm:text-2xl flex-shrink-0">{day.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-gray-900 text-sm sm:text-base">Day {day.day}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 leading-relaxed truncate">{day.task}</div>
                   </div>
                   {day.completed && (
-                    <div style={{ color: "#000099" }}>
-                      <Trophy className="w-5 h-5" />
+                    <div style={{ color: "#000099" }} className="flex-shrink-0">
+                      <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   )}
                 </div>
@@ -227,7 +229,7 @@ export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps)
           <img
             src="https://d7gtruneqk2qegaa.public.blob.vercel-storage.com/created%20by%20AI%20Beginner%20Mode_bk.png"
             alt="Created by AI Beginner Mode"
-            className="mx-auto h-10 opacity-80"
+            className="mx-auto h-5 opacity-80"
           />
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Copy, ChevronLeft, ChevronRight, CheckCircle, Lock, AlertCircle } from "lucide-react"
+import { Copy, ChevronLeft, ChevronRight, CheckCircle, Lock, AlertCircle, Clock } from "lucide-react"
 import type { DayData } from "@/components/habit-builder-app"
 
 interface DayScreenProps {
@@ -13,14 +13,72 @@ interface DayScreenProps {
   onNext: () => void
   onPrev: () => void
   daysData: DayData[]
+  isDayUnlocked: (day: number) => boolean
+  getTimeUntilUnlock: (day: number) => number
 }
 
-export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: DayScreenProps) {
+// Countdown component for next day unlock
+function NextDayCountdown({ timeRemaining }: { timeRemaining: number }) {
+  const [timeLeft, setTimeLeft] = useState(timeRemaining)
+
+  useEffect(() => {
+    setTimeLeft(timeRemaining)
+
+    if (timeRemaining <= 0) return
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        const newTime = prev - 1000
+        return newTime <= 0 ? 0 : newTime
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [timeRemaining])
+
+  if (timeLeft <= 0) return null
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60))
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000)
+
+  return (
+    <div className="flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-sm">
+      <Clock className="w-5 h-5 text-blue-600" />
+      <div className="text-center">
+        <div className="font-bold text-blue-900 text-lg">
+          {hours}h {minutes}m {seconds}s
+        </div>
+        <div className="text-blue-700 text-sm">until Day unlocks</div>
+      </div>
+    </div>
+  )
+}
+
+export function DayScreen({
+  dayData,
+  onComplete,
+  onNext,
+  onPrev,
+  daysData,
+  isDayUnlocked,
+  getTimeUntilUnlock,
+}: DayScreenProps) {
   const [userPrompt, setUserPrompt] = useState("")
   const [userResponse, setUserResponse] = useState("")
   const [showFollowUps, setShowFollowUps] = useState(false)
   const [showError, setShowError] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [, forceUpdate] = useState({})
+
+  // Force re-render every second to update countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate({})
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Sync local state with dayData when day changes - CRITICAL for input field independence
   useEffect(() => {
@@ -92,18 +150,21 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
     onComplete(dayData.day, userPrompt.trim(), userResponse.trim())
   }
 
-  // Progressive unlock logic
-  const isNextDayUnlocked = dayData.day === 7 || daysData[dayData.day]?.completed || dayData.completed
+  // Check if next day is unlocked
+  const isNextDayUnlocked = dayData.day === 7 || isDayUnlocked(dayData.day + 1)
+  const nextDayTimeRemaining = dayData.day < 7 ? getTimeUntilUnlock(dayData.day + 1) : 0
 
   return (
-    <div className="p-4 pb-20 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 pb-20 bg-gradient-to-br from-gray-50 to-white min-h-screen overflow-x-hidden">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">{dayData.icon}</div>
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">Day {dayData.day}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-3 break-words">
+            Day {dayData.day}
+          </h1>
           {dayData.completed && (
-            <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-xl border border-green-200 shadow-sm inline-flex">
+            <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-xl border border-green-200 shadow-sm inline-flex mb-4">
               <CheckCircle className="w-5 h-5" style={{ color: "#000099" }} />
               <span className="font-bold" style={{ color: "#000099" }}>
                 Completed
@@ -111,6 +172,24 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             </div>
           )}
         </div>
+
+        {/* Time Lock Message for Completed Day */}
+        {dayData.completed && dayData.day < 7 && nextDayTimeRemaining > 0 && (
+          <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
+            <CardContent className="p-6 text-center">
+              <div className="text-4xl mb-4">🎉</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Great Job!</h3>
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                You've completed Day {dayData.day}! To build a consistent habit, the next day will unlock in:
+              </p>
+              <NextDayCountdown timeRemaining={nextDayTimeRemaining} />
+              <p className="text-sm text-gray-600 mt-4">
+                This 24-hour spacing helps you develop a sustainable daily AI habit. Use this time to practice what you
+                learned today!
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Task Card */}
         <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
@@ -146,8 +225,8 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
               </Button>
             </div>
 
-            <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 mb-4 shadow-inner">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+            <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 mb-4 shadow-inner overflow-x-auto">
+              <pre className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed break-words">
                 {dayData.template}
               </pre>
             </div>
@@ -171,7 +250,7 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
                 <div>
                   <p className="font-bold text-red-900 mb-1">Complete Both Sections to Continue</p>
                   <p className="text-red-800 text-sm leading-relaxed">
-                    You must fill in both your custom prompt and ChatGPT's response to unlock the next day. Each field
+                    You must fill in both your custom prompt and ChatGPT's response to complete this day. Each field
                     requires at least 10 characters of meaningful content.
                   </p>
                   <p className="text-red-600 font-semibold mt-1 text-sm">* Both fields are required</p>
@@ -267,12 +346,12 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-between items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
           <Button
             variant="outline"
             onClick={onPrev}
             disabled={dayData.day === 1}
-            className="rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
+            className="w-full sm:w-auto rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
             style={{
               borderColor: dayData.day === 1 ? "#ccc" : "#000099",
               color: dayData.day === 1 ? "#999" : "#000099",
@@ -285,7 +364,7 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
           <Button
             onClick={handleComplete}
             disabled={!isFormValid}
-            className="font-bold py-3 px-6 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
+            className="w-full sm:w-auto font-bold py-3 px-6 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
             style={{
               backgroundColor: isFormValid ? "#000099" : "#ccc",
               color: "#fff",
@@ -311,7 +390,7 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             variant="outline"
             onClick={onNext}
             disabled={dayData.day === 7 || !isNextDayUnlocked}
-            className="rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
+            className="w-full sm:w-auto rounded-xl bg-white font-semibold py-3 px-4 shadow-lg hover:shadow-xl transition-all duration-200 border-2"
             style={{
               borderColor: dayData.day === 7 || !isNextDayUnlocked ? "#ccc" : "#000099",
               color: dayData.day === 7 || !isNextDayUnlocked ? "#999" : "#000099",
@@ -320,7 +399,7 @@ export function DayScreen({ dayData, onComplete, onNext, onPrev, daysData }: Day
             {dayData.day === 7 || !isNextDayUnlocked ? (
               <>
                 <Lock className="w-4 h-4 mr-2" />
-                Locked
+                {dayData.day === 7 ? "Final Day" : "Locked"}
               </>
             ) : (
               <>

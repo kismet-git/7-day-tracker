@@ -17,6 +17,7 @@ export interface DayData {
   completed: boolean
   userResponse: string
   userPrompt: string
+  completedAt?: number // Timestamp when day was completed
 }
 
 const initialDaysData: DayData[] = [
@@ -120,6 +121,9 @@ const initialDaysData: DayData[] = [
   },
 ]
 
+// 24-hour time lock utility functions
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+
 export function HabitBuilderApp() {
   const [currentScreen, setCurrentScreen] = useState<"welcome" | "day" | "completion">("welcome")
   const [currentDay, setCurrentDay] = useState(1)
@@ -170,14 +174,38 @@ export function HabitBuilderApp() {
   const completedDays = daysData.filter((day) => day.completed).length
   const progressPercentage = (completedDays / 7) * 100
 
+  // Check if a day is unlocked based on 24-hour time lock
+  const isDayUnlocked = (dayNumber: number): boolean => {
+    if (dayNumber === 1) return true // Day 1 is always unlocked
+
+    const previousDay = daysData[dayNumber - 2]
+    if (!previousDay?.completed || !previousDay?.completedAt) return false
+
+    const now = Date.now()
+    const timeSinceCompletion = now - previousDay.completedAt
+    return timeSinceCompletion >= TWENTY_FOUR_HOURS
+  }
+
+  // Get time remaining until next day unlocks
+  const getTimeUntilUnlock = (dayNumber: number): number => {
+    if (dayNumber === 1) return 0
+
+    const previousDay = daysData[dayNumber - 2]
+    if (!previousDay?.completed || !previousDay?.completedAt) return 0
+
+    const now = Date.now()
+    const unlockTime = previousDay.completedAt + TWENTY_FOUR_HOURS
+    return Math.max(0, unlockTime - now)
+  }
+
   const startChallenge = () => {
     setCurrentScreen("day")
     setCurrentDay(1)
   }
 
   const goToDay = (day: number) => {
-    // Progressive unlock logic - only allow access to completed days + next day
-    const canAccess = day === 1 || daysData[day - 2]?.completed
+    // Enhanced access control with time lock
+    const canAccess = day === 1 || (daysData[day - 2]?.completed && isDayUnlocked(day))
     if (canAccess) {
       setCurrentDay(day)
       setCurrentScreen("day")
@@ -185,14 +213,19 @@ export function HabitBuilderApp() {
   }
 
   const completeDay = (dayNumber: number, userPrompt: string, userResponse: string) => {
+    const completedAt = Date.now()
+
     setDaysData((prev) =>
-      prev.map((day) => (day.day === dayNumber ? { ...day, completed: true, userPrompt, userResponse } : day)),
+      prev.map((day) =>
+        day.day === dayNumber ? { ...day, completed: true, userPrompt, userResponse, completedAt } : day,
+      ),
     )
 
     if (dayNumber === 7) {
       setCurrentScreen("completion")
     } else {
-      setCurrentDay(dayNumber + 1)
+      // Don't automatically advance to next day - user must wait 24 hours
+      // Stay on current day to show completion message
     }
   }
 
@@ -204,11 +237,25 @@ export function HabitBuilderApp() {
   }
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <div className="text-lg font-semibold text-gray-700">Loading your progress...</div>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
-    return <div>Error: {error}</div>
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <div className="text-lg font-semibold text-red-600">Error: {error}</div>
+        </div>
+      </div>
+    )
   }
 
   if (currentScreen === "welcome") {
@@ -223,13 +270,26 @@ export function HabitBuilderApp() {
     <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto">
         <ProgressBar current={completedDays} total={7} percentage={progressPercentage} />
-        <Navigation currentDay={currentDay} daysData={daysData} onDaySelect={goToDay} onReset={resetProgress} />
+        <Navigation
+          currentDay={currentDay}
+          daysData={daysData}
+          onDaySelect={goToDay}
+          onReset={resetProgress}
+          isDayUnlocked={isDayUnlocked}
+          getTimeUntilUnlock={getTimeUntilUnlock}
+        />
         <DayScreen
           dayData={daysData[currentDay - 1]}
           onComplete={completeDay}
-          onNext={() => currentDay < 7 && setCurrentDay(currentDay + 1)}
+          onNext={() => {
+            if (currentDay < 7 && isDayUnlocked(currentDay + 1)) {
+              setCurrentDay(currentDay + 1)
+            }
+          }}
           onPrev={() => currentDay > 1 && setCurrentDay(currentDay - 1)}
           daysData={daysData}
+          isDayUnlocked={isDayUnlocked}
+          getTimeUntilUnlock={getTimeUntilUnlock}
         />
       </div>
     </div>

@@ -11,21 +11,23 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4 overflow-x-hidden">
       <div className="max-w-2xl w-full">
         {/* Hero Section */}
         <div className="text-center mb-6">
           <div className="text-6xl mb-4">
             <Zap className="w-16 h-16 mx-auto text-yellow-400 drop-shadow-lg" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 leading-tight tracking-tight break-words">
             Your 7-Day
             <br />
             <span style={{ color: "#000099" }}>ChatGPT</span>
             <br />
             Habit Builder
           </h1>
-          <p className="text-xl text-gray-600 mb-6 font-medium">You don't need to learn AI — just start using it.</p>
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 font-medium break-words">
+            You don't need to learn AI — just start using it.
+          </p>
 
           {completedDays > 0 && (
             <div className="flex items-center justify-center gap-2 mb-6 p-3 bg-green-50 rounded-xl border border-green-200 shadow-sm">
@@ -35,9 +37,18 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
           )}
         </div>
 
-        {/* Instructions Card */}
+        {/* Welcome Card */}
         <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
           <CardContent className="p-6">
+            {/* Time Lock Feature Highlight */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-400 p-4 mb-4 rounded-r-xl">
+              <h3 className="font-bold text-purple-900 mb-2">🕐 24-Hour Habit Building</h3>
+              <p className="text-purple-800 text-sm">
+                Each day unlocks 24 hours after completing the previous one. This spacing helps you build a consistent
+                daily AI habit that sticks!
+              </p>
+            </div>
+
             {/* Clear Instructions */}
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r-xl">
               <h3 className="font-bold text-blue-900 mb-2">How This Works:</h3>
@@ -52,7 +63,7 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-bold text-blue-600">3.</span>
-                  <span>Unlock the next day by completing both required fields</span>
+                  <span>Wait 24 hours for the next day to unlock automatically</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-bold text-blue-600">4.</span>
@@ -79,7 +90,7 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
             {/* Prompt Building Tips */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">🎯 The Secret to Great Prompts</h3>
-              <div className="grid md:grid-cols-3 gap-3 text-gray-700 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-gray-700 text-sm">
                 <div className="bg-white p-3 rounded-lg shadow-sm">
                   <p className="font-bold text-gray-900 mb-1">Context:</p>
                   <p>Give ChatGPT background info ("I'm a marketing manager...")</p>
@@ -120,7 +131,7 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
           <img
             src="https://d7gtruneqk2qegaa.public.blob.vercel-storage.com/created%20by%20AI%20Beginner%20Mode_bk.png"
             alt="Created by AI Beginner Mode"
-            className="mx-auto h-8 opacity-80"
+            className="mx-auto h-4 opacity-80"
           />
         </div>
       </div>

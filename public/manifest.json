@@ -3,18 +3,20 @@
   "short_name": "7-Day Challenge",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0422FF",
+  "background_color": "#000000",
+  "theme_color": "#000099",
   "icons": [
     {
       "src": "https://d7gtruneqk2qegaa.public.blob.vercel-storage.com/aibeginnermode-icon-minimal_new.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
       "src": "https://d7gtruneqk2qegaa.public.blob.vercel-storage.com/aibeginnermode-icon-minimal_new.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     }
   ]
 }

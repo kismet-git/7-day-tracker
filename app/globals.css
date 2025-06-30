@@ -92,3 +92,24 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide scrollbars while maintaining functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure no horizontal overflow */
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+
+/* Better text wrapping */
+.break-words {
+  word-wrap: break-word;
+  word-break: break-word;
+}
