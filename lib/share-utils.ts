@@ -1,35 +1,45 @@
-// Social sharing utilities
+// Social sharing utilities with security improvements
+import { safeWindowOpen } from "@/lib/security"
+
 export const shareUtils = {
   // Generate share text based on progress
   getShareText: (completedDays: number): string => {
-    if (completedDays === 7) {
+    const safeCompletedDays = Math.max(0, Math.min(7, Number(completedDays) || 0))
+
+    if (safeCompletedDays === 7) {
       return `🎉 I just completed the 7-Day ChatGPT Challenge! Built my AI confidence from zero to hero. Join me! #AIChallenge #ChatGPT`
     }
-    return `💪 Day ${completedDays}/7 complete in my ChatGPT Challenge! Building my AI skills one day at a time. #AIChallenge #ChatGPT`
+    return `💪 Day ${safeCompletedDays}/7 complete in my ChatGPT Challenge! Building my AI skills one day at a time. #AIChallenge #ChatGPT`
   },
 
   // Share on Twitter/X
   shareOnTwitter: (completedDays: number, url: string) => {
     const text = shareUtils.getShareText(completedDays)
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
-    window.open(twitterUrl, "_blank", "width=550,height=420")
+    safeWindowOpen(twitterUrl, "_blank")
   },
 
   // Share on LinkedIn
   shareOnLinkedIn: (url: string) => {
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
-    window.open(linkedInUrl, "_blank", "width=550,height=420")
+    safeWindowOpen(linkedInUrl, "_blank")
   },
 
   // Share on Facebook
   shareOnFacebook: (url: string) => {
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
-    window.open(facebookUrl, "_blank", "width=550,height=420")
+    safeWindowOpen(facebookUrl, "_blank")
   },
 
-  // Copy link to clipboard
+  // Copy link to clipboard with security
   copyLink: async (url: string): Promise<boolean> => {
     try {
+      // Validate URL before copying
+      if (!url || typeof url !== "string") {
+        console.error("Invalid URL for copying")
+        return false
+      }
+
       await navigator.clipboard.writeText(url)
       return true
     } catch (err) {
@@ -38,7 +48,7 @@ export const shareUtils = {
     }
   },
 
-  // Native share API (mobile)
+  // Native share API (mobile) with validation
   nativeShare: async (completedDays: number, url: string): Promise<boolean> => {
     if (navigator.share) {
       try {
@@ -49,7 +59,10 @@ export const shareUtils = {
         })
         return true
       } catch (err) {
-        console.error("Share failed:", err)
+        // User cancelled share or error occurred
+        if (err instanceof Error && err.name !== "AbortError") {
+          console.error("Share failed:", err)
+        }
         return false
       }
     }

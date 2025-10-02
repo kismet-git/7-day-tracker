@@ -10,6 +10,7 @@ import { AchievementPopup } from "@/components/ui/achievement-popup"
 import { analytics } from "@/lib/analytics"
 import { checkAchievements, getNewAchievements, type Achievement } from "@/lib/achievements"
 import { calculateStreak } from "@/lib/streak-calculator"
+import { safeStorage, sanitizeInput, validateInputLength, rateLimiter } from "@/lib/security"
 
 export interface DayData {
   day: number
@@ -126,6 +127,7 @@ const initialDaysData: DayData[] = [
 ]
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+const STORAGE_KEY = "chatgpt-habit-builder"
 
 export function HabitBuilderApp() {
   const [currentScreen, setCurrentScreen] = useState<"welcome" | "day" | "completion">("welcome")
@@ -137,30 +139,31 @@ export function HabitBuilderApp() {
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null)
   const [streakDays, setStreakDays] = useState(0)
 
-  // Load saved progress
+  // Load saved progress with security validation
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        const savedData = localStorage.getItem("chatgpt-habit-builder")
+        const savedData = safeStorage.get(STORAGE_KEY)
+
         if (savedData) {
-          const parsed = JSON.parse(savedData)
-          setDaysData(parsed.daysData || initialDaysData)
-          setCurrentDay(parsed.currentDay || 1)
-          setCurrentScreen(parsed.currentScreen || "welcome")
+          setDaysData(savedData.daysData || initialDaysData)
+          setCurrentDay(savedData.currentDay || 1)
+          setCurrentScreen(savedData.currentScreen || "welcome")
 
           // Calculate streak
-          const streak = calculateStreak(parsed.daysData || initialDaysData)
+          const streak = calculateStreak(savedData.daysData || initialDaysData)
           setStreakDays(streak)
 
           // Load achievements
-          const savedAchievements = checkAchievements(parsed.daysData || initialDaysData, streak)
+          const savedAchievements = checkAchievements(savedData.daysData || initialDaysData, streak)
           setAchievements(savedAchievements)
         }
         analytics.page("app_loaded")
       } catch (e: any) {
-        setError(e.message || "Failed to load data")
-        analytics.track("error", { message: e.message, type: "load_data" })
+        console.error("Load error:", e)
+        setError("Failed to load your progress. Your data may be corrupted.")
+        analytics.track("error", { message: "load_failed", type: "load_data" })
       } finally {
         setIsLoading(false)
       }
@@ -169,21 +172,22 @@ export function HabitBuilderApp() {
     loadData()
   }, [])
 
-  // Save progress
+  // Save progress with security validation
   useEffect(() => {
     if (!isLoading) {
       try {
-        localStorage.setItem(
-          "chatgpt-habit-builder",
-          JSON.stringify({
-            daysData,
-            currentDay,
-            currentScreen,
-          }),
-        )
+        const success = safeStorage.set(STORAGE_KEY, {
+          daysData,
+          currentDay,
+          currentScreen,
+        })
+
+        if (!success) {
+          console.warn("Failed to save progress")
+        }
       } catch (e: any) {
-        setError(e.message || "Failed to save data")
-        analytics.track("error", { message: e.message, type: "save_data" })
+        console.error("Save error:", e)
+        analytics.track("error", { message: "save_failed", type: "save_data" })
       }
     }
   }, [daysData, currentDay, currentScreen, isLoading])
@@ -210,12 +214,22 @@ export function HabitBuilderApp() {
   }
 
   const startChallenge = () => {
+    if (!rateLimiter.isAllowed("start_challenge", 5, 60000)) {
+      console.warn("Rate limit exceeded for starting challenge")
+      return
+    }
+
     setCurrentScreen("day")
     setCurrentDay(1)
     analytics.track("challenge_started")
   }
 
   const goToDay = (day: number) => {
+    if (!rateLimiter.isAllowed("navigate_day", 20, 60000)) {
+      console.warn("Rate limit exceeded for day navigation")
+      return
+    }
+
     const canAccess = day === 1 || (daysData[day - 2]?.completed && isDayUnlocked(day))
     if (canAccess) {
       setCurrentDay(day)
@@ -225,11 +239,26 @@ export function HabitBuilderApp() {
   }
 
   const completeDay = (dayNumber: number, userPrompt: string, userResponse: string) => {
+    if (!rateLimiter.isAllowed(`complete_day_${dayNumber}`, 3, 60000)) {
+      console.warn("Rate limit exceeded for completing day")
+      return
+    }
+
+    // Validate and sanitize inputs
+    if (!validateInputLength(userPrompt, 10000) || !validateInputLength(userResponse, 10000)) {
+      setError("Input too long. Please keep your responses under 10,000 characters.")
+      return
+    }
+
+    const sanitizedPrompt = sanitizeInput(userPrompt)
+    const sanitizedResponse = sanitizeInput(userResponse)
     const completedAt = Date.now()
 
     setDaysData((prev) => {
       const updated = prev.map((day) =>
-        day.day === dayNumber ? { ...day, completed: true, userPrompt, userResponse, completedAt } : day,
+        day.day === dayNumber
+          ? { ...day, completed: true, userPrompt: sanitizedPrompt, userResponse: sanitizedResponse, completedAt }
+          : day,
       )
 
       // Calculate new streak
@@ -265,12 +294,17 @@ export function HabitBuilderApp() {
   }
 
   const resetProgress = () => {
+    if (!rateLimiter.isAllowed("reset_progress", 3, 60000)) {
+      console.warn("Rate limit exceeded for reset")
+      return
+    }
+
     setDaysData(initialDaysData)
     setCurrentDay(1)
     setCurrentScreen("welcome")
     setAchievements([])
     setStreakDays(0)
-    localStorage.removeItem("chatgpt-habit-builder")
+    safeStorage.remove(STORAGE_KEY)
     analytics.track("progress_reset")
   }
 
@@ -290,9 +324,12 @@ export function HabitBuilderApp() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="text-4xl mb-4">❌</div>
-          <div className="text-lg font-semibold text-red-600 mb-4">Error: {error}</div>
+          <div className="text-lg font-semibold text-red-600 mb-4">{error}</div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setError(null)
+              window.location.reload()
+            }}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Reload Page
