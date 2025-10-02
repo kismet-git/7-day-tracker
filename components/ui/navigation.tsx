@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, RotateCcw, Lock, Clock } from "lucide-react"
+import { ShareButton } from "@/components/ui/share-button"
 import type { DayData } from "@/components/habit-builder-app"
 
 interface NavigationProps {
@@ -12,6 +13,7 @@ interface NavigationProps {
   onReset: () => void
   isDayUnlocked: (day: number) => boolean
   getTimeUntilUnlock: (day: number) => number
+  completedDays: number
 }
 
 // Countdown timer component
@@ -56,6 +58,7 @@ export function Navigation({
   onReset,
   isDayUnlocked,
   getTimeUntilUnlock,
+  completedDays,
 }: NavigationProps) {
   const [, forceUpdate] = useState({})
 
@@ -73,29 +76,32 @@ export function Navigation({
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-black text-gray-900">7-Day Challenge</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onReset}
-            className="font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 bg-transparent text-sm"
-            style={{
-              backgroundColor: "#ff3333",
-              color: "#fff",
-              borderRadius: "12px",
-              border: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#d7e022"
-              e.currentTarget.style.color = "#000"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#ff3333"
-              e.currentTarget.style.color = "#fff"
-            }}
-          >
-            <RotateCcw className="w-3 h-3 mr-1" />
-            Reset
-          </Button>
+          <div className="flex items-center gap-2">
+            {completedDays > 0 && <ShareButton completedDays={completedDays} className="hidden sm:flex" />}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReset}
+              className="font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 bg-transparent text-sm"
+              style={{
+                backgroundColor: "#ff3333",
+                color: "#fff",
+                borderRadius: "12px",
+                border: "none",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#d7e022"
+                e.currentTarget.style.color = "#000"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#ff3333"
+                e.currentTarget.style.color = "#fff"
+              }}
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Reset
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">

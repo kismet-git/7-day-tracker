@@ -2,14 +2,19 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, Play, Zap } from "lucide-react"
+import { CheckCircle, Play, Zap, Trophy } from "lucide-react"
+import { StreakDisplay } from "@/components/ui/streak-display"
+import { ShareButton } from "@/components/ui/share-button"
+import type { Achievement } from "@/lib/achievements"
 
 interface WelcomeScreenProps {
   onStart: () => void
   completedDays: number
+  streakDays: number
+  achievements: Achievement[]
 }
 
-export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
+export function WelcomeScreen({ onStart, completedDays, streakDays, achievements }: WelcomeScreenProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4 overflow-x-hidden">
       <div className="max-w-2xl w-full">
@@ -30,9 +35,47 @@ export function WelcomeScreen({ onStart, completedDays }: WelcomeScreenProps) {
           </p>
 
           {completedDays > 0 && (
-            <div className="flex items-center justify-center gap-2 mb-6 p-3 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="text-green-700 font-semibold">{completedDays} of 7 days completed</span>
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200 shadow-sm">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="text-green-700 font-semibold">{completedDays} of 7 days completed</span>
+              </div>
+
+              {streakDays > 0 && (
+                <div className="flex justify-center">
+                  <StreakDisplay streakDays={streakDays} />
+                </div>
+              )}
+
+              {achievements.filter((a) => a.earned).length > 0 && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="w-5 h-5 text-purple-600" />
+                    <span className="font-bold text-purple-900">
+                      {achievements.filter((a) => a.earned).length} Achievement
+                      {achievements.filter((a) => a.earned).length !== 1 ? "s" : ""} Unlocked
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {achievements
+                      .filter((a) => a.earned)
+                      .map((achievement) => (
+                        <div
+                          key={achievement.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg shadow-sm"
+                          title={achievement.description}
+                        >
+                          <span className="text-xl">{achievement.icon}</span>
+                          <span className="text-xs font-semibold text-gray-700">{achievement.title}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center">
+                <ShareButton completedDays={completedDays} />
+              </div>
             </div>
           )}
         </div>

@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Trophy, RotateCcw, ExternalLink, Star } from "lucide-react"
 import type { DayData } from "@/components/habit-builder-app"
+import { ShareButton } from "@/components/ui/share-button"
+import type { Achievement } from "@/lib/achievements"
 
 interface CompletionScreenProps {
   onRestart: () => void
   daysData: DayData[]
+  achievements: Achievement[]
 }
 
 // Optimized confetti animation component
@@ -113,7 +116,7 @@ function ConfettiAnimation() {
   )
 }
 
-export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps) {
+export function CompletionScreen({ onRestart, daysData, achievements }: CompletionScreenProps) {
   const completedDays = daysData.filter((day) => day.completed).length
 
   const handleGetPromptPack = () => {
@@ -140,6 +143,26 @@ export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps)
             <span className="text-xl font-black text-gray-900">{completedDays} of 7 days completed</span>
           </div>
         </div>
+
+        {/* Achievements Section */}
+        {achievements.filter((a) => a.earned).length > 0 && (
+          <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">🏆 Your Achievements</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {achievements
+                  .filter((a) => a.earned)
+                  .map((achievement) => (
+                    <div key={achievement.id} className="bg-white rounded-xl p-4 shadow-sm text-center">
+                      <div className="text-4xl mb-2">{achievement.icon}</div>
+                      <div className="font-bold text-sm text-gray-900 mb-1">{achievement.title}</div>
+                      <div className="text-xs text-gray-600">{achievement.description}</div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Progress Summary */}
         <Card className="mb-6 shadow-xl rounded-2xl border-0 bg-white">
@@ -174,6 +197,10 @@ export function CompletionScreen({ onRestart, daysData }: CompletionScreenProps)
             <p className="text-gray-600 mb-6 leading-relaxed">
               Get access to our complete Prompt Pack with 1000+ proven prompts for every situation.
             </p>
+
+            <div className="mb-4">
+              <ShareButton completedDays={completedDays} className="w-full" />
+            </div>
 
             <Button
               onClick={handleGetPromptPack}

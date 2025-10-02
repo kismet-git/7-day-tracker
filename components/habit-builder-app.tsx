@@ -6,6 +6,10 @@ import { DayScreen } from "@/components/screens/day-screen"
 import { CompletionScreen } from "@/components/screens/completion-screen"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { Navigation } from "@/components/ui/navigation"
+import { AchievementPopup } from "@/components/ui/achievement-popup"
+import { analytics } from "@/lib/analytics"
+import { checkAchievements, getNewAchievements, type Achievement } from "@/lib/achievements"
+import { calculateStreak } from "@/lib/streak-calculator"
 
 export interface DayData {
   day: number
@@ -17,7 +21,7 @@ export interface DayData {
   completed: boolean
   userResponse: string
   userPrompt: string
-  completedAt?: number // Timestamp when day was completed
+  completedAt?: number
 }
 
 const initialDaysData: DayData[] = [
@@ -121,8 +125,7 @@ const initialDaysData: DayData[] = [
   },
 ]
 
-// 24-hour time lock utility functions
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
 
 export function HabitBuilderApp() {
   const [currentScreen, setCurrentScreen] = useState<"welcome" | "day" | "completion">("welcome")
@@ -130,8 +133,11 @@ export function HabitBuilderApp() {
   const [daysData, setDaysData] = useState<DayData[]>(initialDaysData)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [newAchievement, setNewAchievement] = useState<Achievement | null>(null)
+  const [streakDays, setStreakDays] = useState(0)
 
-  // Load saved progress from localStorage
+  // Load saved progress
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
@@ -142,9 +148,19 @@ export function HabitBuilderApp() {
           setDaysData(parsed.daysData || initialDaysData)
           setCurrentDay(parsed.currentDay || 1)
           setCurrentScreen(parsed.currentScreen || "welcome")
+
+          // Calculate streak
+          const streak = calculateStreak(parsed.daysData || initialDaysData)
+          setStreakDays(streak)
+
+          // Load achievements
+          const savedAchievements = checkAchievements(parsed.daysData || initialDaysData, streak)
+          setAchievements(savedAchievements)
         }
+        analytics.page("app_loaded")
       } catch (e: any) {
         setError(e.message || "Failed to load data")
+        analytics.track("error", { message: e.message, type: "load_data" })
       } finally {
         setIsLoading(false)
       }
@@ -153,7 +169,7 @@ export function HabitBuilderApp() {
     loadData()
   }, [])
 
-  // Save progress to localStorage
+  // Save progress
   useEffect(() => {
     if (!isLoading) {
       try {
@@ -167,6 +183,7 @@ export function HabitBuilderApp() {
         )
       } catch (e: any) {
         setError(e.message || "Failed to save data")
+        analytics.track("error", { message: e.message, type: "save_data" })
       }
     }
   }, [daysData, currentDay, currentScreen, isLoading])
@@ -174,25 +191,19 @@ export function HabitBuilderApp() {
   const completedDays = daysData.filter((day) => day.completed).length
   const progressPercentage = (completedDays / 7) * 100
 
-  // Check if a day is unlocked based on 24-hour time lock
   const isDayUnlocked = (dayNumber: number): boolean => {
-    if (dayNumber === 1) return true // Day 1 is always unlocked
-
+    if (dayNumber === 1) return true
     const previousDay = daysData[dayNumber - 2]
     if (!previousDay?.completed || !previousDay?.completedAt) return false
-
     const now = Date.now()
     const timeSinceCompletion = now - previousDay.completedAt
     return timeSinceCompletion >= TWENTY_FOUR_HOURS
   }
 
-  // Get time remaining until next day unlocks
   const getTimeUntilUnlock = (dayNumber: number): number => {
     if (dayNumber === 1) return 0
-
     const previousDay = daysData[dayNumber - 2]
     if (!previousDay?.completed || !previousDay?.completedAt) return 0
-
     const now = Date.now()
     const unlockTime = previousDay.completedAt + TWENTY_FOUR_HOURS
     return Math.max(0, unlockTime - now)
@@ -201,31 +212,55 @@ export function HabitBuilderApp() {
   const startChallenge = () => {
     setCurrentScreen("day")
     setCurrentDay(1)
+    analytics.track("challenge_started")
   }
 
   const goToDay = (day: number) => {
-    // Enhanced access control with time lock
     const canAccess = day === 1 || (daysData[day - 2]?.completed && isDayUnlocked(day))
     if (canAccess) {
       setCurrentDay(day)
       setCurrentScreen("day")
+      analytics.track("day_viewed", { day })
     }
   }
 
   const completeDay = (dayNumber: number, userPrompt: string, userResponse: string) => {
     const completedAt = Date.now()
 
-    setDaysData((prev) =>
-      prev.map((day) =>
+    setDaysData((prev) => {
+      const updated = prev.map((day) =>
         day.day === dayNumber ? { ...day, completed: true, userPrompt, userResponse, completedAt } : day,
-      ),
-    )
+      )
+
+      // Calculate new streak
+      const newStreak = calculateStreak(updated)
+      setStreakDays(newStreak)
+
+      // Check for new achievements
+      const oldAchievements = achievements
+      const newAchievements = checkAchievements(updated, newStreak)
+      setAchievements(newAchievements)
+
+      const justEarned = getNewAchievements(oldAchievements, newAchievements)
+      if (justEarned.length > 0) {
+        setNewAchievement(justEarned[0])
+        analytics.track("achievement_earned", {
+          achievement: justEarned[0].id,
+          day: dayNumber,
+        })
+      }
+
+      return updated
+    })
+
+    analytics.track("day_completed", {
+      day: dayNumber,
+      streak: streakDays + 1,
+    })
 
     if (dayNumber === 7) {
       setCurrentScreen("completion")
-    } else {
-      // Don't automatically advance to next day - user must wait 24 hours
-      // Stay on current day to show completion message
+      analytics.track("challenge_completed")
     }
   }
 
@@ -233,14 +268,17 @@ export function HabitBuilderApp() {
     setDaysData(initialDaysData)
     setCurrentDay(1)
     setCurrentScreen("welcome")
+    setAchievements([])
+    setStreakDays(0)
     localStorage.removeItem("chatgpt-habit-builder")
+    analytics.track("progress_reset")
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
+          <div className="text-4xl mb-4 animate-bounce">⏳</div>
           <div className="text-lg font-semibold text-gray-700">Loading your progress...</div>
         </div>
       </div>
@@ -250,48 +288,73 @@ export function HabitBuilderApp() {
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <div className="text-4xl mb-4">❌</div>
-          <div className="text-lg font-semibold text-red-600">Error: {error}</div>
+          <div className="text-lg font-semibold text-red-600 mb-4">Error: {error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Reload Page
+          </button>
         </div>
       </div>
     )
   }
 
   if (currentScreen === "welcome") {
-    return <WelcomeScreen onStart={startChallenge} completedDays={completedDays} />
+    return (
+      <>
+        <WelcomeScreen
+          onStart={startChallenge}
+          completedDays={completedDays}
+          streakDays={streakDays}
+          achievements={achievements}
+        />
+        <AchievementPopup achievement={newAchievement} onClose={() => setNewAchievement(null)} />
+      </>
+    )
   }
 
   if (currentScreen === "completion") {
-    return <CompletionScreen onRestart={resetProgress} daysData={daysData} />
+    return (
+      <>
+        <CompletionScreen onRestart={resetProgress} daysData={daysData} achievements={achievements} />
+        <AchievementPopup achievement={newAchievement} onClose={() => setNewAchievement(null)} />
+      </>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto">
-        <ProgressBar current={completedDays} total={7} percentage={progressPercentage} />
-        <Navigation
-          currentDay={currentDay}
-          daysData={daysData}
-          onDaySelect={goToDay}
-          onReset={resetProgress}
-          isDayUnlocked={isDayUnlocked}
-          getTimeUntilUnlock={getTimeUntilUnlock}
-        />
-        <DayScreen
-          dayData={daysData[currentDay - 1]}
-          onComplete={completeDay}
-          onNext={() => {
-            if (currentDay < 7 && isDayUnlocked(currentDay + 1)) {
-              setCurrentDay(currentDay + 1)
-            }
-          }}
-          onPrev={() => currentDay > 1 && setCurrentDay(currentDay - 1)}
-          daysData={daysData}
-          isDayUnlocked={isDayUnlocked}
-          getTimeUntilUnlock={getTimeUntilUnlock}
-        />
+    <>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-4xl mx-auto">
+          <ProgressBar current={completedDays} total={7} percentage={progressPercentage} streakDays={streakDays} />
+          <Navigation
+            currentDay={currentDay}
+            daysData={daysData}
+            onDaySelect={goToDay}
+            onReset={resetProgress}
+            isDayUnlocked={isDayUnlocked}
+            getTimeUntilUnlock={getTimeUntilUnlock}
+            completedDays={completedDays}
+          />
+          <DayScreen
+            dayData={daysData[currentDay - 1]}
+            onComplete={completeDay}
+            onNext={() => {
+              if (currentDay < 7 && isDayUnlocked(currentDay + 1)) {
+                setCurrentDay(currentDay + 1)
+              }
+            }}
+            onPrev={() => currentDay > 1 && setCurrentDay(currentDay - 1)}
+            daysData={daysData}
+            isDayUnlocked={isDayUnlocked}
+            getTimeUntilUnlock={getTimeUntilUnlock}
+          />
+        </div>
       </div>
-    </div>
+      <AchievementPopup achievement={newAchievement} onClose={() => setNewAchievement(null)} />
+    </>
   )
 }
